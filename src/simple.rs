@@ -141,9 +141,7 @@ where
 
         let pred_i = utils::pred(i);
 
-        let elements_i = self
-            .get_element(&i)
-            .ok_or(ProverError::MissingHistory(i))?;
+        let elements_i = self.get_element(&i).ok_or(ProverError::MissingHistory(i))?;
         let prev = self
             .get_r(&(i - 1))
             .ok_or_else(|| ProverError::MissingHistory(i - 1))?;
@@ -220,13 +218,7 @@ mod tests {
         prover.insert_data(plain_elements[5]);
 
         let witness = prover.prove_from(4, 4).unwrap();
-        SimpleProver::<sha2::Sha256>::verify(
-            &root_4,
-            4.into(),
-            4.into(),
-            &witness,
-            &elements[3],
-        )
-        .unwrap();
+        SimpleProver::<sha2::Sha256>::verify(&root_4, 4.into(), 4.into(), &witness, &elements[3])
+            .unwrap();
     }
 }
