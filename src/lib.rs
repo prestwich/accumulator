@@ -34,32 +34,52 @@ pub trait Accumulator: Default + Clone {
         acc
     }
 
-    fn state(&self) -> &[Element<Self>];
+    #[doc(hidden)]
+    fn state_mut(&mut self) -> &mut BTreeMap<usize, Element<Self>>;
 
+    #[doc(hidden)]
+    fn state(&self) -> &BTreeMap<usize, Element<Self>>;
+
+    /// Get the
     fn get_state(&self, i: impl Into<U256>) -> Option<Element<Self>> {
         let i: U256 = i.into();
         if i.is_zero() {
             Some(Default::default())
         } else {
-            self.state().get(i.trailing_zeros() as usize).copied()
+            self.state().get(&(i.trailing_zeros() as usize)).copied()
         }
     }
 
+    fn set_state(&mut self, i: impl Into<U256>, element: &Element<Self>) {
+        self.state_mut().insert(i.into().trailing_zeros() as usize, *element);
+    }
+
+    fn state_len(&self) -> usize {
+        self.state().len()
+    }
+
+    /// Returns the number of elements that have been inserted into the
+    /// accumulator
     fn len(&self) -> U256;
 
-    fn get_root(&self) -> Option<Element<Self>> {
-        self.get_state(self.len())
-    }
-
-    fn state_len(&self) -> U256 {
-        self.state().len().into()
-    }
-
     fn is_empty(&self) -> bool {
-        self.state().is_empty()
+        self.len().is_zero()
+    }
+
+    /// Returns the latest state root, or the 0 element if empty
+    fn get_root(&self) -> Element<Self> {
+        self.get_state(self.len()).unwrap_or_else(Default::default)
     }
 
     fn insert(&mut self, element: &Element<Self>) -> Element<Self>;
+
+    fn insert_iter(&mut self, elements: impl Iterator<Item = Element<Self>>) -> Element<Self> {
+        let mut result = Default::default();
+        for e in elements {
+            result = self.insert(&e);
+        }
+        result
+    }
 
     fn insert_data(&mut self, data: impl AsRef<[u8]>) -> Element<Self> {
         self.insert(&Self::Digest::digest(data.as_ref()))

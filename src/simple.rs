@@ -1,10 +1,4 @@
-use digest::{
-    generic_array::{
-        typenum::consts::{U256 as TU256, U32 as TU32},
-        GenericArray,
-    },
-    Digest, Output,
-};
+use digest::{generic_array::typenum::consts::U32 as TU32, Digest, Output};
 use ethers_core::types::U256;
 use std::collections::BTreeMap;
 
@@ -16,15 +10,23 @@ where
     D: Digest<OutputSize = TU32> + Clone + Default,
 {
     k: U256,
-    s: GenericArray<Output<D>, TU256>,
+    s: BTreeMap<usize, Output<D>>,
 }
 
-impl<D> SimpleAccumulator<D>
+
+impl<D> std::iter::FromIterator<Output<D>> for SimpleAccumulator<D>
 where
     D: Digest<OutputSize = TU32> + Clone + Default,
 {
-    fn set_state_at(&mut self, i: U256, element: Element<Self>) {
-        self.s[i.trailing_zeros() as usize] = element;
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = Element<Self>>,
+    {
+        let mut acc = Self::default();
+        for e in iter {
+            acc.insert(&e);
+        }
+        acc
     }
 }
 
@@ -38,8 +40,12 @@ where
         self.k
     }
 
-    fn state(&self) -> &[Element<Self>] {
-        self.s.as_ref()
+    fn state(&self) -> &BTreeMap<usize, Element<Self>> {
+        &self.s
+    }
+
+    fn state_mut(&mut self) -> &mut BTreeMap<usize, Element<Self>> {
+        &mut self.s
     }
 
     fn insert(&mut self, element: &Element<Self>) -> Element<Self> {
@@ -52,7 +58,7 @@ where
         let d = Self::get_digest().chain(element).chain(prev).chain(pred);
         let result = d.finalize();
 
-        self.set_state_at(self.k, result);
+        self.set_state(self.k, &result);
         result
     }
 }
@@ -83,6 +89,22 @@ where
     }
 }
 
+impl<D> std::iter::FromIterator<Output<D>> for SimpleProver<D>
+where
+    D: Digest<OutputSize = TU32> + Clone + Default,
+{
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = Element<Self>>,
+    {
+        let mut acc = Self::default();
+        for e in iter {
+            acc.insert(&e);
+        }
+        acc
+    }
+}
+
 impl<D> From<SimpleAccumulator<D>> for SimpleProver<D>
 where
     D: Digest<OutputSize = TU32> + Clone + Default,
@@ -105,8 +127,12 @@ where
         self.accumulator.len()
     }
 
-    fn state(&self) -> &[Element<Self>] {
-        self.accumulator.state()
+    fn state(&self) -> &BTreeMap<usize, Element<Self>> {
+        &self.accumulator.s
+    }
+
+    fn state_mut(&mut self) -> &mut BTreeMap<usize, Element<Self>> {
+        self.accumulator.state_mut()
     }
 
     fn insert(&mut self, element: &Element<Self>) -> Element<Self> {
@@ -212,7 +238,7 @@ mod tests {
         prover.insert_data(plain_elements[1]);
         prover.insert_data(plain_elements[2]);
         prover.insert_data(plain_elements[3]);
-        let root_4 = prover.get_root().unwrap();
+        let root_4 = prover.get_root();
 
         prover.insert_data(plain_elements[4]);
         prover.insert_data(plain_elements[5]);
