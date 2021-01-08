@@ -1,0 +1,15 @@
+[package]
+name = "bigspider-accumulator"
+version = "0.1.0"
+authors = ["James Prestwich <prestwich@clabs.co>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+digest = "0.9.0"
+ethers-core = { git = "https://github.com/gakonst/ethers-rs" }
+sha2 = "0.9.2"
+
+[dev-dependencies]
+hex = "*"
